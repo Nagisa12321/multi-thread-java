@@ -119,12 +119,14 @@ public class PictureRender {
 	static class ShowWorker implements Runnable {
 		final BlockingQueue<Picture> showQueue;
 		final AtomicInteger succPic;
+		final Picture poison;
 		Thread t;
 
 
-		public ShowWorker(BlockingQueue<Picture> showQueue, AtomicInteger succPic) {
+		public ShowWorker(Picture poison, BlockingQueue<Picture> showQueue, AtomicInteger succPic) {
 			this.showQueue = showQueue;
 			this.succPic = succPic;
+			this.poison = poison;
 		}
 
 		@Override
@@ -133,6 +135,10 @@ public class PictureRender {
 			try {
 				while (true) {
 					Picture take = showQueue.take();
+					if (take == poison) {
+						System.out.println("!!!!!get the poison and exit");
+						break;
+					}
 					take.show();
 					succPic.addAndGet(1);
 				}
@@ -142,7 +148,7 @@ public class PictureRender {
 		}
 
 		public void stop() {
-			t.interrupt();
+			showQueue.offer(poison);
 		}
 	}
 
@@ -151,7 +157,7 @@ public class PictureRender {
 		BlockingQueue<Picture> downloadQueue = new LinkedBlockingQueue<>();
 		BlockingQueue<Picture> showQueue = new LinkedBlockingQueue<>();
 		AtomicInteger succPic = new AtomicInteger(0);
-
+		Picture poison = new Picture(12312321);
 		try {
 			for (int i = 0; i < pictures; i++)
 				downloadQueue.put(pics[i]);
@@ -172,13 +178,16 @@ public class PictureRender {
 						e.printStackTrace();
 					}
 				});
-				ShowWorker showWorker = new ShowWorker(showQueue, succPic);
+				ShowWorker showWorker = new ShowWorker(poison, showQueue, succPic);
 				executor.submit(showWorker);
 				showWorkers.add(showWorker);
 			}
 			while (succPic.get() != pictures) ;
 
-			showWorkers.forEach(ShowWorker::stop);
+			showQueue.offer(poison);
+			showQueue.offer(poison);
+			showQueue.offer(poison);
+			showQueue.offer(poison);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -202,15 +211,17 @@ public class PictureRender {
 		PictureRender pictureRender;
 //		pictureRender = new PictureRender();
 //		long picture_serial = pictureRender.renderPicture_serial();
-		pictureRender = new PictureRender();
-		long picture_mycompletionService = pictureRender.renderPicture_completionService();
-		pictureRender = new PictureRender();
-		long picture_completionService = pictureRender.renderPicture_completionService();
+//		pictureRender = new PictureRender();
+//		long picture_mycompletionService = pictureRender.renderPicture_completionService();
+//		pictureRender = new PictureRender();
+//		long picture_completionService = pictureRender.renderPicture_completionService();
 		pictureRender = new PictureRender();
 		long renderPicture_bq = pictureRender.renderPicture_bq();
 //		System.out.println("serial: " + picture_serial + "ms");
-		System.out.println("completionService: " + picture_completionService + "ms");
-		System.out.println("my completionService: " + picture_mycompletionService + "ms");
-//		System.out.println("bq: " + renderPicture_bq + "ms");
+//		System.out.println("completionService: " + picture_completionService + "ms");
+//		System.out.println("my completionService: " + picture_mycompletionService + "ms");
+		System.out.println("bq: " + renderPicture_bq + "ms");
+
+
 	}
 }
